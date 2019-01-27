@@ -157,12 +157,6 @@ mem_init(void)
 	// array.  'npages' is the number of physical pages in memory.  Use memset
 	// to initialize all fields of each struct PageInfo to 0.
 	// Your code goes here:
-
-	//////////////////////////////////////////////////////////////////////
-	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
-	// LAB 3: Your code here.
-
-	//////////////////////////////////////////////////////////////////////
     cprintf("npages %lu\n", npages);
     pages = (struct PageInfo *) boot_alloc(sizeof(struct PageInfo) * npages) ;
     memset(pages, 0, sizeof(struct PageInfo) * npages );
@@ -172,6 +166,13 @@ mem_init(void)
     cprintf("The KERNBASE + EXTPHYSMEM is %08x \n", KERNBASE + EXTPHYSMEM);
 
     cprintf("kern_pgdir : %p \n", kern_pgdir );
+	//////////////////////////////////////////////////////////////////////
+	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
+	// LAB 3: Your code here.
+    //////////////////////////////////////////////////////////////////////
+    envs = (struct Env *) boot_alloc(sizeof(struct Env) * NENV );
+    memset(envs, 0, sizeof(struct Env) * NENV);
+
     //////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -195,9 +196,9 @@ mem_init(void)
 	// Your code goes here:
     boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P );
     pde_t *p ;
-    for ( p = kern_pgdir, n = 0; n < 1024 ; ++n, ++p  ) {
-        cprintf("kern_pgdir[%4d]> %p: %08x\n", n, p, *p);
-    }
+    // for ( p = kern_pgdir, n = 0; n < 1024 ; ++n, ++p  ) {
+    //     cprintf("kern_pgdir[%4d]> %p: %08x\n", n, p, *p);
+    // }
         // cprintf("kern_pgdir[%d] > %p : %p\n", n ,kern_pgdir + 4*n, kern_pgdir[n]);
 
 	//////////////////////////////////////////////////////////////////////
@@ -207,9 +208,10 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-
 	//////////////////////////////////////////////////////////////////////
-        // cprintf("kern_pgdir + %03x : %08x\n", n*4, kern_pgdir[n]);
+    boot_map_region(kern_pgdir, UENVS, PTSIZE, PADDR(bootstack), PTE_U | PTE_P);
+
+
 
     //////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
