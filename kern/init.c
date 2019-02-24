@@ -43,7 +43,7 @@ i386_init(void)
 
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
-
+    lock_kernel();
 	// Starting non-boot CPUs
 	boot_aps();
 
@@ -52,9 +52,16 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
+	// ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
+    // ENV_CREATE(user_yield, ENV_TYPE_USER);
+    // ENV_CREATE(user_yield, ENV_TYPE_USER);
+    // ENV_CREATE(user_yield, ENV_TYPE_USER);
+    // ENV_CREATE(user_yield, ENV_TYPE_USER);
+    ENV_CREATE(user_stresssched, ENV_TYPE_USER);
+    // ENV_CREATE(user_forktree, ENV_TYPE_USER);
+	// ENV_CREATE(user_faultnostack, ENV_TYPE_USER);
 #endif // TEST*
-
+    cprintf("i386_init: env_created\n");
 	// Schedule and run the first user environment!
 	sched_yield();
 }
@@ -81,7 +88,7 @@ boot_aps(void)
 		if (c == cpus + cpunum())  // We've started already.
 			continue;
 
-		// Tell mpentry.S what stack to use 
+		// Tell mpentry.S what stack to use
 		mpentry_kstack = percpu_kstacks[c - cpus] + KSTKSIZE;
 		// Start the CPU at mpentry_start
 		lapic_startap(c->cpu_id, PADDR(code));
@@ -95,13 +102,17 @@ boot_aps(void)
 void
 mp_main(void)
 {
-	// We are in high EIP now, safe to switch to kern_pgdir 
+	// We are in high EIP now, safe to switch to kern_pgdir
 	lcr3(PADDR(kern_pgdir));
 	cprintf("SMP: CPU %d starting\n", cpunum());
 
+    cprintf("mp_main: lapic_init()\n");
 	lapic_init();
+    cprintf("mp_main: env_init_percpu()\n");
 	env_init_percpu();
+    cprintf("mp_main: trap_init_percpu()\n");
 	trap_init_percpu();
+    cprintf("mp_main: xchg(cpu_status, CPU_STARTED)\n");
 	xchg(&thiscpu->cpu_status, CPU_STARTED); // tell boot_aps() we're up
 
 	// Now that we have finished some basic setup, call sched_yield()
@@ -109,9 +120,9 @@ mp_main(void)
 	// only one CPU can enter the scheduler at a time!
 	//
 	// Your code here:
-
+    lock_kernel();
+    sched_yield();
 	// Remove this after you finish Exercise 6
-	for (;;);
 }
 
 /*

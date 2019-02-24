@@ -205,7 +205,7 @@ env_setup_vm(struct Env *e)
     for ( size_t pdeno = PDX(UTOP) ; pdeno < PDX(0xffffffff) ; ++pdeno ) {
         assert(e->env_pgdir[pdeno] == kern_pgdir[pdeno]);
     }
-    assert(e->env_pgdir[1024] != kern_pgdir[1024]);
+    // assert(e->env_pgdir[1024] != kern_pgdir[1024]);
 
     // UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -273,8 +273,9 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
+    e->env_tf.tf_eflags |= FL_IF ;
 
-	// Clear the page fault handler until user installs one.
+    // Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
 	// Also clear the IPC receiving flag.
@@ -450,9 +451,6 @@ env_create(uint8_t *binary, enum EnvType type)
 #endif
     load_icode(e ,binary);
     e->env_type = type ;
-#ifdef DEBUG
-    cprintf("env_create: ends!\n");
-#endif
     assert( e->env_pgdir[PDX(UENVS)] == kern_pgdir[PDX(UENVS)] );
 }
 
@@ -547,7 +545,8 @@ env_pop_tf(struct Trapframe *tf)
 	curenv->env_cpunum = cpunum();
 
 #ifdef DEBUG
-    cprintf("env_pop_tf: eip == %p\n", tf->tf_eip);
+    cprintf("############################\n");
+    cprintf("env_pop_tf: eid == %d\n", curenv->env_id);
     cprintf("############################\n");
 #endif
     asm volatile(
@@ -587,16 +586,17 @@ env_run(struct Env *e)
 	//	and make sure you have set the relevant parts of
 	//	e->env_tf to sensible values.
 	// LAB 3: Your code here.
-    if ( e ) {
         // cprintf("env_run: e == %p\n", e);
         // cprintf("env_run: e->env_pgdir == %p\n", e->env_pgdir);
         // cprintf("env_run: e->env_id == 0x%08x\n", e->env_id);
-
-        if ( curenv ) {
+    if ( e ) {
+        if ( curenv && curenv != e ) {
             curenv->env_status = ENV_RUNNABLE ;
         }
+
         lcr3(PADDR(e->env_pgdir));
 #ifdef DEBUG
+        cprintf("env_run: running eid [%08x] on CPU %d\n", e->env_id, cpunum());
         cprintf("env_run: (after lcr3(curenv)) e == %p\n", e);
         cprintf("env_run: (after lcr3(curenv)) e->env_pgdir == %p\n", e->env_pgdir);
         cprintf("env_run: (after lcr3(curenv)) e->env_id == 0x%08x\n", e->env_id);
@@ -607,11 +607,10 @@ env_run(struct Env *e)
         e->env_status = ENV_RUNNING ;
         assert(envs[ENVX(curenv->env_id)].env_id == curenv->env_id );
         // assert( curenv->env_pgdir[PDX(UENVS)] == kern_pgdir[PDX(UENVS)] );
+        unlock_kernel();
         env_pop_tf(&curenv->env_tf) ;
-
     }
 
-
-	panic("env_run not yet implemented");
+    panic("no env");
 }
 

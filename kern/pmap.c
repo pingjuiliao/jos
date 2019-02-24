@@ -300,7 +300,12 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+    int i ;
+    uintptr_t kstacktop_i;
+    for (i = 0; i < NCPU ; ++i ) {
+        kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP) ;
+        boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W | PTE_P );
+    }
 }
 
 // --------------------------------------------------------------
@@ -348,7 +353,8 @@ page_init(void)
         kva = (uint32_t) page2kva(&pages[i]);
         // cprintf(" %p ->", &pages[i]);
         if ( i == 0 ||
-                 ( IOPHYSMEM <= pa && kva < bound_pageinfo )) {
+                 ( IOPHYSMEM <= pa && kva < bound_pageinfo ) ||
+                 (  pa == MPENTRY_PADDR  )) {
             pages[i].pp_ref = 1;
             pages[i].pp_link = NULL;
         } else {
@@ -385,6 +391,7 @@ page_alloc(int alloc_flags)
 
     if ( new_page ) {
         if (alloc_flags & ALLOC_ZERO) {
+            // cprintf("page_alloc: page2kva(new_page) == %p\n", page2kva(new_page));
             memset(page2kva(new_page), 0, PGSIZE);
         }
         page_free_list = page_free_list->pp_link ;
@@ -495,7 +502,7 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
-    uintptr_t bound = va + size ;
+    uintptr_t bound = ROUNDUP(va + size, PGSIZE) ;
     pte_t *pte ;
     while ( va != bound ) {
         pte = pgdir_walk(pgdir, (void *) va, 1);
@@ -656,7 +663,10 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+    void *result = (void *) base ;
+    boot_map_region(kern_pgdir, base, size, pa, PTE_P | PTE_W| PTE_PCD | PTE_PWT);
+    base = ROUNDUP(base + size, PGSIZE) ;
+    return result ;
 }
 
 static uintptr_t user_mem_check_addr;
@@ -700,8 +710,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
             user_mem_check_addr = (uintptr_t) p ;
             cprintf("user_mem_check: INVALID !! \n");
             cprintf("user_mem_check: invalid address %p\n", p);
-            cprintf("user_mem_check: *pte  == 0x%08x\n", PGOFF(*pte));
-            cprintf("user_mem_check: perm == 0x%08x\n", perm);
+            cprintf("user_mem_check: user_mem_check_addr == 0x%08x\n", user_mem_check_addr);
             return -E_FAULT ;
         }
 #ifdef DEBUG
@@ -1116,7 +1125,7 @@ check_page(void)
 	mm1 = (uintptr_t) mmio_map_region(0, 4097);
 	mm2 = (uintptr_t) mmio_map_region(0, 4096);
 	// check that they're in the right region
-	assert(mm1 >= MMIOBASE && mm1 + 8192 < MMIOLIM);
+    assert(mm1 >= MMIOBASE && mm1 + 8192 < MMIOLIM);
 	assert(mm2 >= MMIOBASE && mm2 + 8192 < MMIOLIM);
 	// check that they're page-aligned
 	assert(mm1 % PGSIZE == 0 && mm2 % PGSIZE == 0);
