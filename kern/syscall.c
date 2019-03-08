@@ -128,6 +128,7 @@ sys_env_set_status(envid_t envid, int status)
     if ( status != ENV_RUNNABLE && status != ENV_NOT_RUNNABLE ) {
         return -E_INVAL ;
     }
+
     e->env_status = status ;
     cprintf("sys_env_set_status: setting env[%08x] to %s\n", envid, (status == ENV_RUNNABLE)? "RUNNABLE": "NOT RUNNABLE");
     return 0;
@@ -184,7 +185,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	// cprintf("sys_page_alloc: trying to map %p\n", va);
     struct PageInfo *pp;
     struct Env *e ;
-    int result ;
+    int result, r ;
 
     envid2env(envid, &e, 1);
     if ( !e ) {
@@ -343,7 +344,42 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+    // from 'curenv' to 'e'
+    struct Env *e ;
+    pte_t *src_pte, *dst_pte;
+	struct PageInfo *pp;
+    int result ;
+    envid2env(envid, &e, 0) ;
+    if ( !e ) {
+        return -E_BAD_ENV ;
+    }
+    if ( !e->env_ipc_recving ) {
+        return -E_IPC_NOT_RECV ;
+    }
+    if ( (uint32_t) srcva >= UTOP ) {
+        return -E_INVAL ;
+    } else if ((uint32_t) srcva % PGSIZE  ) {
+        return -E_INVAL ;
+    } else if ( (src_pte = pgdir_walk(curenv->env_pgdir, srcva, 0)) <= 0 ) {
+        return -E_INVAL ;
+    } else if ( (dst_pte = pgdir_walk(e->env_pgdir, e->env_ipc_dstva, 0)) <= 0 ) {
+        return -E_INVAL ;
+    } else if ( !(perm & PTE_W & *src_pte) ) {
+        return -E_INVAL ;
+    }
+
+    // success
+    pp = page_alloc(ALLOC_ZERO);
+    if ( ( result = page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm) ) != 0 ) {
+        return -E_NO_MEM ;
+    }
+    e->env_ipc_recving = 0 ;
+    e->env_ipc_from = curenv->env_id ;
+    e->env_ipc_value = value ;
+    e->env_ipc_perm  = perm ;
+    e->env_status = ENV_RUNNABLE ;
+    e->env_tf.tf_regs.reg_eax = 0 ;
+    return 0 ;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -364,11 +400,11 @@ sys_ipc_recv(void *dstva)
 	if ( ((uint32_t) dstva >= UTOP ) || ((uint32_t) dstva % PGSIZE ) ) {
         return -E_INVAL ;
     }
-    // page_remove(curenv->pgdir, dstva);
-    // receive page of data....
-    // page_insert(
-    panic("not yet implemented]");
-    return 0;
+    curenv->env_ipc_recving = 1 ;
+    curenv->env_ipc_dstva = dstva ;
+    curenv->env_status = ENV_NOT_RUNNABLE ;
+    sys_yield() ;
+    return 0 ;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -404,7 +440,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall((envid_t) a1, (void *) a2);
     case SYS_yield :
-        sys_yield();
+        sys_yield(); // never reture
         return 0;
     case SYS_ipc_try_send:
         return sys_ipc_try_send((envid_t) a1, (uint32_t) a2, (void *) a3, (unsigned) a4);

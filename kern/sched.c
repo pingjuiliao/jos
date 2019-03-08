@@ -31,30 +31,27 @@ sched_yield(void)
 	// LAB 4: Your code here.
     int i, env_i;
     size_t base;
-    // cprintf("round robining with cpu == %d\n", cpunum());
+    cprintf("round robining with cpu == %d\n", cpunum());
     if ( curenv ) {
-        base = ENVX(curenv->env_id);
+        base = ENVX(curenv->env_id) + 1 ;
     } else {
         base = 0 ;
     }
     for ( i = 0 ; i < NENV ; ++i ) {
         env_i = ( base + i ) % NENV ;
-        // cprintf("sched_yield: env_i == %u (CPU %d)\n", env_i, cpunum());
         if ( envs[env_i].env_status == ENV_RUNNABLE ) {
-            // cprintf("loop over\n");
-            // cprintf("env_run with eid == %d\n", env_i);
-            // cprintf("env_run with cpu == %d\n", cpunum());
             env_run(&envs[env_i]);
         }
+
     }
-    // cprintf("loop over without finding RUNNABLE (CPU %d)\n", cpunum());
-    if ( curenv->env_status == ENV_RUNNING ) {
-        // cprintf("found nothing: env run with eid == %d\n", curenv->env_id);
+
+    if ( curenv && curenv->env_status == ENV_RUNNING ) {
         env_run(curenv);
     }
-    // cprintf("sched_halt()");
+    cprintf("sched_yield: cpu %d gonna sched_halt\n");
 	// sched_halt never returns
-	sched_halt();
+    sched_halt();
+
 }
 
 // Halt this CPU when there is nothing to do. Wait until the
@@ -82,7 +79,7 @@ sched_halt(void)
 	// Mark that no environment is running on this CPU
 	curenv = NULL;
 	lcr3(PADDR(kern_pgdir));
-
+    cprintf("no env running on CPU %d\n", cpunum());
 	// Mark that this CPU is in the HALT state, so that when
 	// timer interupts come in, we know we should re-acquire the
 	// big kernel lock

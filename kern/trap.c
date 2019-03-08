@@ -143,7 +143,8 @@ trap_init(void)
     SETGATE(idt[T_MCHK]   , 0, GD_KT, _trap_machine_check, 0);
     SETGATE(idt[T_SIMDERR], 0, GD_KT, _trap_simd_floating_point_error, 0);
     // IRQs : already set by picirq.c ?
-    SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, _trap_irq_timer, 0);
+    cprintf("trap_init: trap_init initialized timer in CPU %d\n", cpunum());
+    SETGATE(idt[IRQ_OFFSET + IRQ_TIMER ], 0, GD_KT, _trap_irq_timer, 0);
     SETGATE(idt[IRQ_OFFSET + IRQ_KBD ], 0, GD_KT, _trap_irq_kbd, 0);
     SETGATE(idt[IRQ_OFFSET + 2 ], 0, GD_KT, _trap_irq_2, 0);
     SETGATE(idt[IRQ_OFFSET + 3], 0, GD_KT, _trap_irq_3, 0);
@@ -205,16 +206,16 @@ trap_init_percpu(void)
     cprintf("trap_init_percpu: thiscpu is %d\n", i);
     thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
     thiscpu->cpu_ts.ts_ss0 = GD_KD;
-    thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
+    // thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate) - 1 ;
 
     // Initialize the TSS slot of the gdt.
-    gdt[(GD_TSS0 >> 3) + i] = SEG16(STS_T32A, (uint32_t) &thiscpu->cpu_ts,
+    gdt[(GD_TSS0 >> 3) + i] = SEG16(STS_T32A, (uint32_t) &(thiscpu->cpu_ts),
             sizeof(struct Taskstate) - 1, 0);
     gdt[(GD_TSS0 >> 3) + i].sd_s = 0;
 
     // Load the TSS selector (like other segment selectors, the
     // bottom three bits are special; we leave them 0)
-    ltr(GD_TSS0 + (i << 3));
+    ltr(GD_TSS0 + ( i << 3 ));
 
     // Load the IDT
     lidt(&idt_pd);
@@ -310,9 +311,7 @@ trap_dispatch(struct Trapframe *tf)
     // interrupt using lapic_eoi() before calling the scheduler!
     // LAB 4: Your code here.
     if ( tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER ) {
-#ifdef DEBUG
-        cprintf("trap_dispatch: timer interrupt\n");
-#endif
+        cprintf("trap_dispatch: getting timer interrupt CPU %d\n", cpunum());
         lapic_eoi();
         sched_yield();
     }
@@ -352,7 +351,8 @@ trap(struct Trapframe *tf)
     // fails, DO NOT be tempted to fix it by inserting a "cli" in
     // the interrupt path.
     assert(!(read_eflags() & FL_IF));
-
+    if (tf->tf_trapno == IRQ_OFFSET )
+        cprintf("trap: timer interrupt on CPU %d\n",cpunum());
     if ((tf->tf_cs & 3) == 3) {
         // Trapped from user mode.
         // Acquire the big kernel lock before doing any
@@ -395,7 +395,7 @@ trap(struct Trapframe *tf)
 }
 
 
-    void
+void
 page_fault_handler(struct Trapframe *tf)
 {
     uint32_t fault_va;
@@ -470,6 +470,7 @@ page_fault_handler(struct Trapframe *tf)
         utf->utf_regs.reg_esi = tf->tf_regs.reg_esi;
         utf->utf_regs.reg_edi = tf->tf_regs.reg_edi;
         utf->utf_regs.reg_ebp = tf->tf_regs.reg_ebp;
+        // utf->utf_regs = tf->tf_regs;
         utf->utf_eip = tf->tf_eip ;
         utf->utf_eflags = tf->tf_eflags ;
         utf->utf_esp = tf->tf_esp ;
