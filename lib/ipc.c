@@ -1,7 +1,7 @@
 // User-level IPC library routines
 
 #include <inc/lib.h>
-
+#define PAGE_INVALID (UTOP + 1)
 // Receive a value via IPC and return it.
 // If 'pg' is nonnull, then any page sent by the sender will be mapped at
 //	that address.
@@ -23,19 +23,23 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-    int result ;
+    int recv_result = -1 ;
     if ( pg ) {
-        result = sys_ipc_recv(pg);
+        recv_result = sys_ipc_recv(pg);
     } else {
-        result = sys_ipc_recv((void *) UTOP);
+        recv_result = sys_ipc_recv((void *) PAGE_INVALID); // invalid address
     }
     // syscall fails ...
-    if ( result != 0 ) {
-        if ( from_env_store ) *from_env_store = 0;
-        if ( perm_store ) *perm_store = 0 ;
-        return 0 ;
+    if ( recv_result < 0 ) {
+        if ( from_env_store ) {
+            *from_env_store = 0;
+        }
+        if ( perm_store ) {
+            *perm_store = 0 ;
+        }
+        return recv_result ;
     }
-
+    // ipc_recv succeed !!!
     if ( from_env_store ) {
         *from_env_store = thisenv->env_ipc_from ;
     }
@@ -60,18 +64,18 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 {
 	// LAB 4: Your code here.
 	int send_result = -1;
+    if ( !pg ) {
+        pg = (void *) PAGE_INVALID ;
+    }
+
     while (1) {
-        if ( pg ) {
-            send_result = sys_ipc_try_send(to_env, val, pg, perm) ;
-            sys_yield() ;
-        } // else {
-          //  send_result = sys_ipc_try_send(to_env, val, (void *) UTOP, perm) ;
-          // }
+        send_result = sys_ipc_try_send(to_env, val, pg, perm) ;
         if ( send_result == 0 ) {
-            break ;
-        } else if ( send_result != -E_IPC_NOT_RECV ) {
+            return ;
+        } else if ( send_result != -E_IPC_NOT_RECV )   {
             panic("unexpected error in lib/ipc_send");
         }
+        sys_yield();
     }
     // panic("ipc_send not implemented");
 }

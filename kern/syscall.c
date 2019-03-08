@@ -130,7 +130,7 @@ sys_env_set_status(envid_t envid, int status)
     }
 
     e->env_status = status ;
-    cprintf("sys_env_set_status: setting env[%08x] to %s\n", envid, (status == ENV_RUNNABLE)? "RUNNABLE": "NOT RUNNABLE");
+    // cprintf("sys_env_set_status: setting env[%08x] to %s\n", envid, (status == ENV_RUNNABLE)? "RUNNABLE": "NOT RUNNABLE");
     return 0;
 }
 
@@ -208,8 +208,6 @@ sys_page_alloc(envid_t envid, void *va, int perm)
     if ( result != 0 ) {
         page_free(pp);
     }
-    // cprintf("sys_page_alloc: PageInfo *pp == %p\n", pp);
-    // cprintf("sys_page_alloc: got result == \n");
     return result ;
 }
 
@@ -251,18 +249,22 @@ sys_page_map(envid_t srcenvid, void *srcva,
     envid2env(srcenvid, &src_env, 1);
     if ( !src_env ) return -E_BAD_ENV;
     if ( ((uint32_t) srcva >= UTOP ) || ((uint32_t) srcva & 0xfff ) ) {
+        cprintf("sys_page_map: srcva issues\n");
         return -E_INVAL ;
     }
     // destination env
     envid2env(dstenvid, &dst_env, 1);
     if ( !dst_env ) return -E_BAD_ENV ;
     if ( ((uint32_t) dstva >= UTOP ) || ((uint32_t) dstva & 0xfff ) ) {
+        cprintf("sys_page_map: dstva issues\n");
         return -E_INVAL ;
     }
 
     // permission
     if ( !( perm & PTE_P) || !( perm & PTE_U ) || ( perm & ~PTE_SYSCALL)) {
+        cprintf("sys_page_map: permission issues\n");
         return -E_INVAL ;
+
     }
 
     // get source pte
@@ -271,6 +273,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
         cprintf("sys_page_map: invalid permission on source environments\n");
         return -E_INVAL ;
     }
+
     // insert into destination pte
     insert_result = page_insert(dst_env->env_pgdir, pp, dstva, perm);
     // cprintf("sys_page_map: insert_result == %d\n", insert_result);
@@ -349,30 +352,47 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
     pte_t *src_pte, *dst_pte;
 	struct PageInfo *pp;
     int result ;
+    // cprintf("sys_ipc_try_send: start\n");
     envid2env(envid, &e, 0) ;
     if ( !e ) {
+        cprintf("sys_ipc_try_send: bad env\n");
         return -E_BAD_ENV ;
     }
     if ( !e->env_ipc_recving ) {
         return -E_IPC_NOT_RECV ;
     }
-    if ( (uint32_t) srcva >= UTOP ) {
+
+    if ((uint32_t) srcva < UTOP ) {
+        if ( (uint32_t) srcva % PGSIZE  ) {
+            cprintf("sys_ipc_try_send: bad srcva\n");
+            return -E_INVAL ;
+        }
+        pp = page_lookup(curenv->env_pgdir, srcva, &src_pte) ;
+        if ( !pp  ) {
+            cprintf("sys_ipc_try_send: src_page not alloc\n");
+            return -E_INVAL ;
+        }
+        if ( !( perm & PTE_P) || !( perm & PTE_U ) || ( perm & ~PTE_SYSCALL)) {
+            cprintf("sys_ipc_try_send: sys_page_alloc permission failure\n");
+            return -E_INVAL ;
+        }
+        if ( ( result = page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm) ) < 0 ) {
+            cprintf("sys_ipc_try_send: bad page_insert\n");
+            return result ;
+        }
+    }
+
+    if ( !(dst_pte = pgdir_walk(e->env_pgdir, e->env_ipc_dstva, 0)) ) {
+        cprintf("sys_ipc_try_send: dst_page not alloc\n");
         return -E_INVAL ;
-    } else if ((uint32_t) srcva % PGSIZE  ) {
-        return -E_INVAL ;
-    } else if ( (src_pte = pgdir_walk(curenv->env_pgdir, srcva, 0)) <= 0 ) {
-        return -E_INVAL ;
-    } else if ( (dst_pte = pgdir_walk(e->env_pgdir, e->env_ipc_dstva, 0)) <= 0 ) {
-        return -E_INVAL ;
-    } else if ( !(perm & PTE_W & *src_pte) ) {
+    }
+    if ( ( perm & PTE_W ) && !(PTE_W & *src_pte) ) {
+        cprintf("sys_ipc_try_send: bad permission\n");
         return -E_INVAL ;
     }
 
+
     // success
-    pp = page_alloc(ALLOC_ZERO);
-    if ( ( result = page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm) ) != 0 ) {
-        return -E_NO_MEM ;
-    }
     e->env_ipc_recving = 0 ;
     e->env_ipc_from = curenv->env_id ;
     e->env_ipc_value = value ;
@@ -397,9 +417,10 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	if ( ((uint32_t) dstva >= UTOP ) || ((uint32_t) dstva % PGSIZE ) ) {
+	if ( ((uint32_t) dstva < UTOP ) && ((uint32_t) dstva % PGSIZE ) ) {
         return -E_INVAL ;
     }
+    // cprintf("sys_ipc_recv: succeed \n");
     curenv->env_ipc_recving = 1 ;
     curenv->env_ipc_dstva = dstva ;
     curenv->env_status = ENV_NOT_RUNNABLE ;

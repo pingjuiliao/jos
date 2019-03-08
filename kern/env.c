@@ -590,7 +590,7 @@ env_run(struct Env *e)
         // cprintf("env_run: e->env_pgdir == %p\n", e->env_pgdir);
         // cprintf("env_run: e->env_id == 0x%08x\n", e->env_id);
     if ( e ) {
-        if ( curenv && curenv != e && curenv->env_status == ENV_RUNNING) {
+        if ( curenv && curenv != e && curenv->env_status == ENV_RUNNING ) {
             curenv->env_status = ENV_RUNNABLE ;
         }
 

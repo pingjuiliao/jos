@@ -31,7 +31,7 @@ sched_yield(void)
 	// LAB 4: Your code here.
     int i, env_i;
     size_t base;
-    cprintf("round robining with cpu == %d\n", cpunum());
+    // cprintf("round robining with cpu == %d\n", cpunum());
     if ( curenv ) {
         base = ENVX(curenv->env_id) + 1 ;
     } else {
@@ -48,7 +48,7 @@ sched_yield(void)
     if ( curenv && curenv->env_status == ENV_RUNNING ) {
         env_run(curenv);
     }
-    cprintf("sched_yield: cpu %d gonna sched_halt\n");
+    // cprintf("sched_yield: cpu %d gonna sched_halt\n");
 	// sched_halt never returns
     sched_halt();
 
@@ -95,7 +95,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
