@@ -30,9 +30,29 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+    int i, env_i;
+    size_t base;
+    // cprintf("round robining with cpu == %d\n", cpunum());
+    if ( curenv ) {
+        base = ENVX(curenv->env_id) + 1 ;
+    } else {
+        base = 0 ;
+    }
+    for ( i = 0 ; i < NENV ; ++i ) {
+        env_i = ( base + i ) % NENV ;
+        if ( envs[env_i].env_status == ENV_RUNNABLE ) {
+            env_run(&envs[env_i]);
+        }
 
+    }
+
+    if ( curenv && curenv->env_status == ENV_RUNNING ) {
+        env_run(curenv);
+    }
+    // cprintf("sched_yield: cpu %d gonna sched_halt\n");
 	// sched_halt never returns
-	sched_halt();
+    sched_halt();
+
 }
 
 // Halt this CPU when there is nothing to do. Wait until the
@@ -60,7 +80,7 @@ sched_halt(void)
 	// Mark that no environment is running on this CPU
 	curenv = NULL;
 	lcr3(PADDR(kern_pgdir));
-
+    cprintf("no env running on CPU %d\n", cpunum());
 	// Mark that this CPU is in the HALT state, so that when
 	// timer interupts come in, we know we should re-acquire the
 	// big kernel lock
@@ -76,7 +96,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"

@@ -26,13 +26,16 @@ void
 duppage(envid_t dstenv, void *addr)
 {
 	int r;
-
+    // cprintf("duppage: sys_page_alloc\n");
 	// This is NOT what you should do in your fork.
 	if ((r = sys_page_alloc(dstenv, addr, PTE_P|PTE_U|PTE_W)) < 0)
 		panic("sys_page_alloc: %e", r);
+    // cprintf("duppage: sys_page_map\n");
 	if ((r = sys_page_map(dstenv, addr, 0, UTEMP, PTE_P|PTE_U|PTE_W)) < 0)
 		panic("sys_page_map: %e", r);
+    // cprintf("duppage: memmove\n");
 	memmove(UTEMP, addr, PGSIZE);
+    // cprintf("duppage: after memmove\n");
 	if ((r = sys_page_unmap(0, UTEMP)) < 0)
 		panic("sys_page_unmap: %e", r);
 }
@@ -67,7 +70,6 @@ dumbfork(void)
 	// This is NOT what you should do in your fork implementation.
 	for (addr = (uint8_t*) UTEXT; addr < end; addr += PGSIZE)
 		duppage(envid, addr);
-
 	// Also copy the stack we are currently running on.
 	duppage(envid, ROUNDDOWN(&addr, PGSIZE));
 

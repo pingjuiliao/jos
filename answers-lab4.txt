@@ -1,0 +1,24 @@
+Question 1. Compare kern/mpentry.S side by side with boot/boot.S. Bearing in mind that kern/mpentry.S is compiled and linked to run above KERNBASE just like everything else in the kernel, what is the purpose of macro MPBOOTPHYS? Why is it necessary in kern/mpentry.S but not in boot/boot.S? In other words, what could go wrong if it were omitted in kern/mpentry.S? Hint: recall the differences between the link address and the load address that we have discussed in Lab 1.
+
+APs have to use MPBOOTPHYS macro to calculate absolute addresses of it symbols, while the BSP have the luxuries running in addresses below and the linker will figure out the BSP gdt address for it.
+
+
+Question 2. It seems that using the big kernel lock guarantees that only one CPU can run the kernel code at a time. Why do we still need separate kernel stacks for each CPU? Describe a scenario in which using a shared kernel stack will go wrong, even with the protection of the big kernel lock.
+
+
+The reason is that there are codes between the entry of kernel mode and acquiring the kernel lock, and that there are codes
+between the release of kernel lock and 'iret'. In these codes, kernel save/restore some data for the user, so seperated stacks are needed.
+
+If the kernel stack is unary, there would be some race condition while A process pushes the trapframe data on the stack, while B process pops its own trapframe data off the stack. Both operation happen before acquiring/releasing the kernel lock, so the data(trapframe) on the stack are scrambled and therefore both process cannot restore the context when they 'iret' back to the
+user mode .
+
+
+Question 3. In your implementation of env_run() you should have called lcr3(). Before and after the call to lcr3(), your code makes references (at least it should) to the variable e, the argument to env_run. Upon loading the %cr3 register, the addressing context used by the MMU is instantly changed. But a virtual address (namely e) has meaning relative to a given address context–the address context specifies the physical address to which the virtual address maps. Why can the pointer e be dereferenced both before and after the addressing switch?
+
+The "Struct Env *e" is an argument of the kernel function so that the *e is stored in kernel stack.
+The kernel stacks (no matter which CPU it is) are mapped at same address.
+
+
+Question 4. Whenever the kernel switches from one environment to another, it must ensure the old environment’s registers are saved so they can be restored properly later. Why? Where does this happen?
+
+For each env gets trap, the context (registers) are saved in the trapframe, which happens in the kern/trapentry.S, pushing all the registers into the trapframe for that environment. When the trapped environment gets scheduled to be executed again the env_pop_tf(..) restore the context and continue the execution.
