@@ -72,7 +72,8 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
         send_result = sys_ipc_try_send(to_env, val, pg, perm) ;
         if ( send_result == 0 ) {
             return ;
-        } else if ( send_result != -E_IPC_NOT_RECV )   {
+        }
+        if ( send_result != -E_IPC_NOT_RECV )   {
             panic("unexpected error in lib/ipc_send");
         }
         sys_yield();

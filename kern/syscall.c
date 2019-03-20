@@ -143,7 +143,24 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+    struct Env *e = NULL ;
+    int r ;
+
+    envid2env(envid, &e, 1);
+    if ( !e )
+        return -E_BAD_ENV ;
+    // set to tf
+    // e->env_tf = *tf ;
+    // ring 3
+    e->env_tf.tf_ds = GD_UD | 3 ;
+    e->env_tf.tf_es = GD_UD | 3 ;
+    e->env_tf.tf_ss = GD_UD | 3 ;
+    e->env_tf.tf_cs = GD_UT | 3 ;
+    // interrupt enabled
+    e->env_tf.tf_eflags |= FL_IF ;
+    // IOPL of 0
+    e->env_tf.tf_eflags &= ~FL_IOPL_MASK ;
+    return 0 ;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -394,10 +411,10 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
         }
     }
 
-    if ( !(dst_pte = pgdir_walk(e->env_pgdir, e->env_ipc_dstva, 0)) ) {
+    /*if ( !(dst_pte = pgdir_walk(e->env_pgdir, e->env_ipc_dstva, 0)) ) {
         cprintf("sys_ipc_try_send: dst_page not alloc\n");
         return -E_INVAL ;
-    }
+    }*/
     if ( ( perm & PTE_W ) && !(PTE_W & *src_pte) ) {
         cprintf("sys_ipc_try_send: bad permission\n");
         return -E_INVAL ;
@@ -470,6 +487,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
         return sys_exofork();
     case SYS_env_set_status:
         return sys_env_set_status((envid_t) a1, (int) a2);
+    case SYS_env_set_trapframe:
+        return sys_env_set_trapframe((envid_t) a1, (struct Trapframe *) a2);
     case SYS_env_set_pgfault_upcall:
         return sys_env_set_pgfault_upcall((envid_t) a1, (void *) a2);
     case SYS_yield :

@@ -207,14 +207,34 @@ serve_set_size(envid_t envid, struct Fsreq_set_size *req)
 int
 serve_read(envid_t envid, union Fsipc *ipc)
 {
-	struct Fsreq_read *req = &ipc->read;
+
+    int r ;
+    int bytes_read = 0;
+    struct OpenFile *o ;
+    struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
 
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-	return 0;
+
+    if (( r= openfile_lookup(envid, req->req_fileid, &o)) < 0 )
+        return r ;
+
+    // read loop : get stucked
+    /*while ( bytes_read < req->req_n ) {
+        if (( r = file_read(o->o_file, ret->ret_buf, req->req_n - bytes_read, o->o_fd->fd_offset)) < 0 )
+            return r ;
+        o->o_fd->fd_offset += r ;
+        bytes_read += r ;
+    }*/
+    // read through
+    if (( bytes_read = file_read(o->o_file, ret->ret_buf, req->req_n, o->o_fd->fd_offset)) < 0 )
+        return bytes_read;
+    o->o_fd->fd_offset += bytes_read ;
+
+    return bytes_read;
 }
 
 
@@ -229,7 +249,27 @@ serve_write(envid_t envid, struct Fsreq_write *req)
 		cprintf("serve_write %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// LAB 5: Your code here.
-	panic("serve_write not implemented");
+    int r ;
+    int bytes_written = 0 ;
+    struct OpenFile *o ;
+
+    if (( r = openfile_lookup(envid, req->req_fileid, &o)) < 0 )
+        return r ;
+    // looped write : not get stucked
+
+   /* while ( bytes_written < req->req_n ) {
+        if ( ( r = file_write(o->o_file, req->req_buf, req->req_n - bytes_written, o->o_fd->fd_offset)) < 0 )
+            return r ;
+
+        o->o_fd->fd_offset += r;
+        bytes_written += r ;
+    }*/
+    // write through
+    if( (bytes_written = file_write(o->o_file, req->req_buf, req->req_n, o->o_fd->fd_offset)) < 0 )
+        return bytes_written ;
+    o->o_fd->fd_offset += bytes_written ;
+
+    return bytes_written ;
 }
 
 // Stat ipc->stat.req_fileid.  Return the file's struct Stat to the
