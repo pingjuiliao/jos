@@ -49,10 +49,12 @@ bc_pgfault(struct UTrapframe *utf)
 	//
 	// LAB 5: you code here:
     //
+    cprintf("bc_pgfault: my code begin ( addr == %p\n", addr);
     sys_page_alloc(thisenv->env_id, diskaddr(blockno), PTE_SYSCALL);
     if ((r = ide_read(blockno * BLKSECTS, diskaddr(blockno), BLKSECTS)) < 0)
         panic("bc_pgfault: read disk failure\n");
 
+    cprintf("bc_pgfault: my code end\n");
 	// Clear the dirty bit for the disk block page since we just read the
 	// block from disk
 	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
@@ -104,7 +106,7 @@ static void
 check_bc(void)
 {
 	struct Super backup;
-
+    cprintf("check_bc: start\n");
 	// back up super block
 	memmove(&backup, diskaddr(1), sizeof backup);
 
@@ -162,8 +164,9 @@ bc_init(void)
 	struct Super super;
 	set_pgfault_handler(bc_pgfault);
 	check_bc();
-
+    cprintf("bc_init: check_bc finished\n");
 	// cache the super block by reading it once
 	memmove(&super, diskaddr(1), sizeof super);
+    cprintf("bc_init: finished\n");
 }
 
