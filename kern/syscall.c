@@ -150,7 +150,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
     if ( !e )
         return -E_BAD_ENV ;
     // set to tf
-    // e->env_tf = *tf ;
+    memcpy(&e->env_tf, tf, sizeof(struct Trapframe));
     // ring 3
     e->env_tf.tf_ds = GD_UD | 3 ;
     e->env_tf.tf_es = GD_UD | 3 ;
