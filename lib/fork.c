@@ -74,7 +74,11 @@ duppage(envid_t envid, unsigned pn)
     void* va = (void *) (pn * PGSIZE);
     envid_t parent = thisenv->env_id;
     pte_t pte = uvpt[pn];
-    if ( ( pte & PTE_W ) || ( pte & PTE_COW ) ) {
+    if ( pte & PTE_SHARE ) {
+        if ( ( r = sys_page_map(parent, va, envid, va, PTE_SYSCALL) ) < 0 ) {
+            return r ;
+        }
+    } else if ( ( pte & PTE_W ) || ( pte & PTE_COW ) ) {
 #ifdef DEBUG
         cprintf("duppage: mapping va %p\n", va);
         cprintf("                pte %p\n", pte);
