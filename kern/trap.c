@@ -145,10 +145,10 @@ trap_init(void)
     // IRQs : already set by picirq.c ?
     // cprintf("trap_init: trap_init initialized timer in CPU %d\n", cpunum());
     SETGATE(idt[IRQ_OFFSET + IRQ_TIMER ], 0, GD_KT, _trap_irq_timer, 0);
-    SETGATE(idt[IRQ_OFFSET + IRQ_KBD ], 0, GD_KT, _trap_irq_kbd, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_KBD ], 0, GD_KT, _trap_irq_kbd, 0); // kbd_intr
     SETGATE(idt[IRQ_OFFSET + 2 ], 0, GD_KT, _trap_irq_2, 0);
     SETGATE(idt[IRQ_OFFSET + 3], 0, GD_KT, _trap_irq_3, 0);
-    SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, _trap_irq_serial, 0);
+    SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, _trap_irq_serial, 0); // serial_intr
     SETGATE(idt[IRQ_OFFSET + 5], 0, GD_KT, _trap_irq_5, 0);
     SETGATE(idt[IRQ_OFFSET + 6], 0, GD_KT, _trap_irq_6, 0);
     SETGATE(idt[IRQ_OFFSET + IRQ_SPURIOUS], 0, GD_KT, _trap_irq_spurious, 0);
@@ -317,9 +317,16 @@ trap_dispatch(struct Trapframe *tf)
         sched_yield();
     }
 	// Handle keyboard and serial interrupts.
-    // Unexpected trap: The user process or the kernel has a bug.
 	// LAB 5: Your code here.
-
+    if ( tf->tf_trapno == IRQ_OFFSET + IRQ_KBD ) {
+        kbd_intr();
+        return ;
+    }
+    if ( tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL ) {
+        serial_intr() ;
+        return ;
+    }
+    // Unexpected trap: The user process or the kernel has a bug.
     print_trapframe(tf);
     if (tf->tf_cs == GD_KT)
         panic("unhandled trap in kernel");

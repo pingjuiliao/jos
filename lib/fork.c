@@ -79,26 +79,17 @@ duppage(envid_t envid, unsigned pn)
             return r ;
         }
     } else if ( ( pte & PTE_W ) || ( pte & PTE_COW ) ) {
-#ifdef DEBUG
-        cprintf("duppage: mapping va %p\n", va);
-        cprintf("                pte %p\n", pte);
-#endif
         if ( ( r = sys_page_map(parent, va, envid, va, PTE_COW | PTE_U | PTE_P )) < 0 ) {
-            cprintf("before return r1\n");
             return r;
         }
         if ( ( r = sys_page_map(envid, va, parent, va, PTE_COW | PTE_U | PTE_P)) < 0 ) {
-            cprintf("before return r2\n");
             return r;
         }
     } else {
-        if ( ( r = sys_page_map(parent, va, envid, va, PGOFF(pte)) ) < 0 ) {
+        if ( ( r = sys_page_map(parent, va, envid, va, PTE_SYSCALL) ) < 0 ) {
             return r;
         }
     }
-#ifdef DEBUG
-    cprintf("duppage (in lib/fork.c) : duppage returnning 0\n");
-#endif
     return 0;
 }
 

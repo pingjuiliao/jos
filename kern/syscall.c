@@ -291,7 +291,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 
     // permission
     if ( !( perm & PTE_P) || !( perm & PTE_U ) || ( perm & ~PTE_SYSCALL)) {
-        cprintf("sys_page_map: permission issues\n");
+        cprintf("sys_page_map: permission issues like sys_page_alloc\n");
         return -E_INVAL ;
 
     }
