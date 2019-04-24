@@ -75,7 +75,7 @@ duppage(envid_t envid, unsigned pn)
     envid_t parent = thisenv->env_id;
     pte_t pte = uvpt[pn];
     if ( pte & PTE_SHARE ) {
-        if ( ( r = sys_page_map(parent, va, envid, va, PTE_SYSCALL) ) < 0 ) {
+        if ( ( r = sys_page_map(parent, va, envid, va, pte & PTE_SYSCALL) ) < 0 ) {
             return r ;
         }
     } else if ( ( pte & PTE_W ) || ( pte & PTE_COW ) ) {

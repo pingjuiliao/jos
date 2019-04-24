@@ -111,6 +111,10 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
+    if (PADDR(nextfree) >= npages * PGSIZE ) {
+        panic("boot_alloc: Not enough memory ");
+    }
+    
     if ( n >= 0 ) {
         result = nextfree ;
         if ( n > 0 ) {
@@ -459,12 +463,14 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	// Fill this function in
     pte_t *pt_pa, *pt_kva; // page table
     pte_t *pte ;
-    // pde_t *pde;
+    pde_t *pde;
     struct PageInfo* pte_struct ;
     if ( pgdir ) {
+        pde    = &pgdir[PDX(va)] ;
         pt_pa  = (pte_t *) PTE_ADDR( pgdir[PDX(va)] );
         pt_kva = (pte_t *) KADDR(PTE_ADDR(pgdir[PDX(va)])) ;
-        if ( pt_pa == NULL ) {
+        // if ( pt_pa == NULL ) {
+        if ( ! ( *pde & PTE_P )  ) { 
             if ( create == false ) {
                 return NULL ;
             } else {
