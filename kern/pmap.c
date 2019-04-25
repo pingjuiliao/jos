@@ -369,6 +369,8 @@ page_init(void)
 		    page_free_list = &pages[i];
 	    }
     }
+    
+
 #ifdef DEBUG
     cprintf("end of page_init()\n");
     cprintf("page_free_list* : %p\n", page_free_list);
@@ -417,10 +419,16 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
-    if ( pp->pp_ref == 0 && pp->pp_link == NULL ) {
-        pp->pp_link = page_free_list ;
-        page_free_list = pp ;
+    // 
+    if ( pp->pp_ref || pp->pp_link ) {
+        panic("page_free: nonzero pp->pp_ref or pp->pp_link is not NULL");
     }
+
+
+    // if ( pp->pp_ref == 0 && pp->pp_link == NULL ) {
+    pp->pp_link = page_free_list ;
+    page_free_list = pp ;
+    // }
 
 }
 
@@ -483,12 +491,14 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
                 pte_struct->pp_ref += 1 ;
 
                 pt_pa  = (pte_t *) PTE_ADDR( page2pa(pte_struct) ); // == pde
+                // pt_pa = (pte_t *) page2pa(pte_struct) ;
                 pt_kva = (pte_t *) KADDR(PTE_ADDR(page2pa(pte_struct))) ;
                 pgdir[PDX(va)] = (uint32_t)  pt_pa | PTE_P | PTE_U | PTE_W  ;
 
             }
         }
-        pte = pt_kva + PTX(va) ;
+        // pte = pt_kva + PTX(va) ;
+        pte = &pt_kva[PTX(va)];
         return pte ;
 
     }
@@ -560,7 +570,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
         page_remove(pgdir, va);
     }
     *pte = page2pa(pp) | perm | PTE_P ;
-    tlb_invalidate(pgdir, va);
+    // tlb_invalidate(pgdir, va);
 
 
     return 0;
