@@ -193,18 +193,16 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
-    e->env_pgdir = (pde_t *) KADDR(PTE_ADDR(page2pa(p)));
+    e->env_pgdir = (pde_t *) KADDR(page2pa(p));
     p->pp_ref ++ ;
-#ifdef DEBUG
-    cprintf("env_setup_vm: start\n");
-    cprintf("env_setup_vm: from UTOP to 0xffffffff should be %08x\n", PGSIZE-sizeof(uint32_t)*PDX(UTOP));
-#endif
+    
     memcpy(&e->env_pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)], PGSIZE - sizeof(uint32_t)*PDX(UTOP));
-
+#ifdef DEBUG
     assert( e->env_pgdir[PDX(UENVS)] == kern_pgdir[PDX(UENVS)] );
     for ( size_t pdeno = PDX(UTOP) ; pdeno < PDX(0xffffffff) ; ++pdeno ) {
         assert(e->env_pgdir[pdeno] == kern_pgdir[pdeno]);
     }
+#endif
     // assert(e->env_pgdir[1024] != kern_pgdir[1024]);
 
     // UVPT maps the env's own page table read-only.
