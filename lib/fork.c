@@ -145,7 +145,8 @@ fork(void)
                 perm = PGOFF( (uintptr_t) pde & (uintptr_t) pte ) ;
                 if ( pte & PTE_P ) {
                     if ( ( r = duppage(envid, PGNUM(va))) < 0 ) {
-                        panic("duppage failed\n");
+                        panic("duppage: duppage failed with va == %p\n", va);
+                        
                     }
                 }
             }

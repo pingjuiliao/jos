@@ -298,8 +298,8 @@ sys_page_map(envid_t srcenvid, void *srcva,
 
     // get source pte
     pp = page_lookup(src_env->env_pgdir, srcva, &pte);
-    cprintf("sys_page_map: pp == %p \n", pp);
-    cprintf("parent forking ...\n");
+    // cprintf("sys_page_map: pp == %p \n", pp);
+    // cprintf("parent forking ...\n");
     if ( !pp || (( perm & PTE_W ) && !( *pte & PTE_W)) ) {
         cprintf("sys_page_map: invalid permission on source environments\n");
         return -E_INVAL ;
