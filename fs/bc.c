@@ -49,7 +49,9 @@ bc_pgfault(struct UTrapframe *utf)
 	//
 	// LAB 5: you code here:
     //
-    sys_page_alloc(thisenv->env_id, diskaddr(blockno), PTE_SYSCALL);
+    // sys_page_alloc(thisenv->env_id, diskaddr(blockno), PTE_SYSCALL);
+    cprintf("bc_page_fault\n");
+    sys_page_alloc(0, diskaddr(blockno), PTE_SYSCALL);
     if ((r = ide_read(blockno * BLKSECTS, diskaddr(blockno), BLKSECTS)) < 0)
         panic("bc_pgfault: read disk failure\n");
 

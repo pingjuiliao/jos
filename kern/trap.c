@@ -420,7 +420,7 @@ page_fault_handler(struct Trapframe *tf)
     cprintf("page_fault_handler: tf->tf_cs == 0x%08x\n", tf->tf_cs);
 #endif
     // cprintf("page_fault_handler: tf->tf_esp == %p\n", tf->tf_esp);
-    if ( ( tf->tf_cs & 0x00000008 ) == 0 ) {
+    if ( ( tf->tf_cs & 0x8 ) == 0 ) {
         panic("page_fault_handler: kernel-mode exception");
     }
 

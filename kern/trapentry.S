@@ -120,12 +120,15 @@ TRAPHANDLER_NOEC(_trap_irq_error, IRQ_OFFSET + IRQ_ERROR);
  * Lab 3: Your code here for _alltraps
  */
 _alltraps:
-    push %es;
     push %ds;
+    push %es;
     pushal;
-    push $GD_KD;
-    mov (%esp), %ds;
-    mov (%esp), %es;
-    pop %edi;
+    mov $GD_KD, %ax;
+	mov %ax, %ds;
+	mov %ax, %es;
+	//push $GD_KD;
+    //mov (%esp), %ds;
+    //mov (%esp), %es;
+    //pop %edi;
     pushl %esp ;
     call trap ;

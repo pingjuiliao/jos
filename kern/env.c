@@ -126,7 +126,7 @@ env_init(void)
         // cprintf("env_init: i == %5lu\n", i);
         // cprintf("env_init: &envs[i] == %p\n", &envs[i]);
         envs[i].env_id = 0;
-        envs[i].env_status = ENV_FREE;
+        // envs[i].env_status = ENV_FREE;
         envs[i].env_link = env_free_list ;
         env_free_list = &envs[i];
     }
@@ -195,7 +195,7 @@ env_setup_vm(struct Env *e)
 	// LAB 3: Your code here.
     e->env_pgdir = (pde_t *) KADDR(page2pa(p));
     p->pp_ref ++ ;
-    
+
     memcpy(&e->env_pgdir[PDX(UTOP)], &kern_pgdir[PDX(UTOP)], PGSIZE - sizeof(uint32_t)*PDX(UTOP));
 #ifdef DEBUG
     assert( e->env_pgdir[PDX(UENVS)] == kern_pgdir[PDX(UENVS)] );
@@ -396,14 +396,18 @@ load_icode(struct Env *e, uint8_t *binary)
 #ifdef DEBUG
             cprintf("memcpy(dst=%p, src=%p, size=0x%08x\n", ph->p_va, binary + ph->p_offset, ph->p_filesz);
 #endif
+            // memset((void *)ph->p_va, 0, ph->p_memsz);
             memcpy((void *)ph->p_va, (void *) binary + ph->p_offset, ph->p_filesz);
             memset((void *)(ph->p_va + ph->p_filesz), 0, ph->p_memsz - ph->p_filesz);
 
         }
     }
+    // INTERESTING : should i add this line ?
     lcr3(PADDR(kern_pgdir));
-    // pingjui: load the env_tf
+
     e->env_tf.tf_eip = (uintptr_t) ((struct Elf *) binary)->e_entry;
+
+    // pingjui: load the env_tf
 #ifdef DEBUG
     cprintf("load_icode: e->env_tf.tf_eip == %p\n", e->env_tf.tf_eip);
     cprintf("load_icode: e->env_tf.tf_esp == %p\n", e->env_tf.tf_esp);
@@ -593,9 +597,8 @@ env_run(struct Env *e)
 	//	and make sure you have set the relevant parts of
 	//	e->env_tf to sensible values.
 	// LAB 3: Your code here.
-        // cprintf("env_run: e == %p\n", e);
-        // cprintf("env_run: e->env_pgdir == %p\n", e->env_pgdir);
-        // cprintf("env_run: e->env_id == 0x%08x\n", e->env_id);
+
+
     if ( e ) {
         if ( curenv && curenv != e && curenv->env_status == ENV_RUNNING ) {
             curenv->env_status = ENV_RUNNABLE ;
@@ -620,4 +623,3 @@ env_run(struct Env *e)
 
     panic("no env");
 }
-

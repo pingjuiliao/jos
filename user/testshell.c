@@ -51,7 +51,6 @@ umain(int argc, char **argv)
 
 		n2 = read(kfd, &c2, 1);
         cprintf("n2 == %d\n", n2);
-        cprintf("after read\n");
 		if (n1 < 0)
 			panic("reading testshell.out: %e", n1);
 		if (n2 < 0)
@@ -59,7 +58,6 @@ umain(int argc, char **argv)
 		if (n1 == 0 && n2 == 0)
 			break;
 		if (n1 != 1 || n2 != 1 || c1 != c2)
-			cprintf("wrong(rfd, kfd, nloff)\n");
             wrong(rfd, kfd, nloff);
         
 		if (c1 == '\n')
