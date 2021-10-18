@@ -262,14 +262,14 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-    uint32_t kva, pa, bound_pageinfo = (uint32_t) boot_alloc(0) ;
+    physaddr_t pa;
+    void* bound_pageinfo = boot_alloc(0) ;
 
 
     for (i = 0; i < npages; i++) {
-        pa = (uint32_t) page2pa(&pages[i]);
-        kva = (uint32_t) page2kva(&pages[i]);
+        pa = page2pa(&pages[i]);
         if ( i == 0 ||
-                 ( IOPHYSMEM <= pa && kva < bound_pageinfo )) {
+                 ( IOPHYSMEM <= pa && pa < PADDR(bound_pageinfo)) ) {
             pages[i].pp_ref = 1;
             pages[i].pp_link = NULL;
         } else {
@@ -364,36 +364,20 @@ pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
-    pte_t *pt_pa, *pt_kva; // page table
     pte_t *pte ;
-    // pde_t *pde;
-    struct PageInfo* pte_struct ;
-    if ( pgdir ) {
-        pt_pa  = (pte_t *) PTE_ADDR( pgdir[PDX(va)] );
-        pt_kva = (pte_t *) KADDR(PTE_ADDR(pgdir[PDX(va)])) ;
-        if ( pt_pa == NULL ) {
-            if ( create == false ) {
-                return NULL ;
-            } else {
-                pte_struct = page_alloc(1);
+    struct PageInfo* pp ;
 
-                // cprintf("pgdir_walk: pte_struct is %p\n", pte_struct);
-                if ( !pte_struct ) {
-                    return NULL ;
-                }
-                pte_struct->pp_ref += 1 ;
+    // 
+    if ( !pgdir[PDX(va)] & PTE_P ) {
+        if ( !create ) return NULL; 
 
-                pt_pa  = (pte_t *) PTE_ADDR( page2pa(pte_struct) ); // == pde
-                pt_kva = (pte_t *) KADDR(PTE_ADDR(page2pa(pte_struct))) ;
-                pgdir[PDX(va)] = (uint32_t)  pt_pa | PTE_P | PTE_U | PTE_W  ;
-
-            }
-        }
-        pte = pt_kva + PTX(va) ;
-        return pte ;
-
+        pp = page_alloc(ALLOC_ZERO) ;
+        if (!pp) return NULL ;
+        pp->pp_ref += 1 ;
+        pgdir[PDX(va)] = PTE_ADDR(page2pa(pp)) | PTE_P | PTE_W | PTE_U ;
     }
-	return NULL;
+    pte = (pte_t*) KADDR(PTE_ADDR( pgdir[PDX(va)])) ;
+    return &pte[PTX(va)];
 }
 
 //
@@ -514,13 +498,12 @@ page_remove(pde_t *pgdir, void *va)
 	// Fill this function in
     struct PageInfo* page_struct ;
     pte_t *pte ;
-    if ( pgdir ) {
-        page_struct = page_lookup(pgdir, va, &pte);
-        if ( page_struct ) {
-            page_decref(page_struct);
-            *pte = 0;
-            tlb_invalidate(pgdir, va);
-        }
+
+    page_struct = page_lookup(pgdir, va, &pte);
+    if ( page_struct ) {
+        page_decref(page_struct);
+        *pte = 0;
+        tlb_invalidate(pgdir, va);
     }
 }
 
