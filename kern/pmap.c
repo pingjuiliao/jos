@@ -95,7 +95,6 @@ boot_alloc(uint32_t n)
 	if (!nextfree) {
 		extern char end[];
 		nextfree = ROUNDUP((char *) end, PGSIZE);
-        cprintf("boot_alloc: first end[] == %p\n", nextfree);
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -146,7 +145,8 @@ mem_init(void)
 	// following line.)
 	// Permissions: kernel R, user R
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
-    cprintf("kern_pgdir[PDX(UVPT)] : %08x\n", kern_pgdir[PDX(UVPT)] );
+
+
 	//////////////////////////////////////////////////////////////////////
 	// Allocate an array of npages 'struct PageInfo's and store it in 'pages'.
 	// The kernel uses this array to keep track of physical pages: for
@@ -154,15 +154,9 @@ mem_init(void)
 	// array.  'npages' is the number of physical pages in memory.  Use memset
 	// to initialize all fields of each struct PageInfo to 0.
 	// Your code goes here:
-    cprintf("npages %lu\n", npages);
     pages = (struct PageInfo *) boot_alloc(sizeof(struct PageInfo) * npages) ;
     memset(pages, 0, sizeof(struct PageInfo) * npages );
-    cprintf("pages allocation succeed\n");
-    cprintf("The pages* starts from %p to %08x \n", pages, (uint32_t) pages + npages * 8 );
-    cprintf("The KERNBASE + IOPHYSMEM is %08x \n",  KERNBASE + IOPHYSMEM);
-    cprintf("The KERNBASE + EXTPHYSMEM is %08x \n", KERNBASE + EXTPHYSMEM);
 
-    cprintf("kern_pgdir : %p \n", kern_pgdir );
     //////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -185,6 +179,7 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
     boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P );
+
 
     //////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -273,7 +268,6 @@ page_init(void)
     for (i = 0; i < npages; i++) {
         pa = (uint32_t) page2pa(&pages[i]);
         kva = (uint32_t) page2kva(&pages[i]);
-        // cprintf(" %p ->", &pages[i]);
         if ( i == 0 ||
                  ( IOPHYSMEM <= pa && kva < bound_pageinfo )) {
             pages[i].pp_ref = 1;
@@ -284,9 +278,6 @@ page_init(void)
 		    page_free_list = &pages[i];
 	    }
     }
-    cprintf("end of page_init()\n");
-    cprintf("page_free_list* : %p\n", page_free_list);
-    cprintf("pages + npages  : 0x%08x\n", pages + npages);
 
 }
 
@@ -491,7 +482,6 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
     pte_t *pte = pgdir_walk(pgdir, va, 0);
-    cprintf("page_lookup( pgdir, va==%p, **pte_t=%p\n", va, pte_store);
     if ( pte ) {
         if ( pte_store ) {
             *pte_store = pte ;
