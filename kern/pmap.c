@@ -185,13 +185,6 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
     boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P );
-    pde_t *p ;
-    for ( p = kern_pgdir, n = 0; n < 1024 ; ++n, ++p  ) {
-        cprintf("kern_pgdir[%4d]> %p: %08x\n", n, p, *p);
-    }
-        // cprintf("kern_pgdir[%d] > %p : %p\n", n ,kern_pgdir + 4*n, kern_pgdir[n]);
-
-        // cprintf("kern_pgdir + %03x : %08x\n", n*4, kern_pgdir[n]);
 
     //////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -205,7 +198,6 @@ mem_init(void)
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
     boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W | PTE_P);
-    boot_map_region(kern_pgdir, KSTACKTOP - PTSIZE, PTSIZE - KSTKSIZE, PADDR(bootstack), 0);
 
     //////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -433,7 +425,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
     while ( va != bound ) {
         pte = pgdir_walk(pgdir, (void *) va, 1);
         if ( pte ) {
-            *pte = pa | perm ;
+            *pte = pa | perm |PTE_P;
         }
         pa += PGSIZE ;
         va += PGSIZE ;
@@ -470,18 +462,14 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
 	pte_t *pte = pgdir_walk(pgdir, va, 1) ;
-    cprintf("page_insert: pte == %p\n", pte);
     if ( pte == NULL )
         return -E_NO_MEM ;
 
     pp->pp_ref ++ ;
     if ( *pte ) {
-        cprintf("page_insert: doing page remove !!\n");
         page_remove(pgdir, va);
     }
-    cprintf("page_insert: overwriting the page table entry content \n");
     *pte = page2pa(pp) | perm | PTE_P ;
-    tlb_invalidate(pgdir, va);
 
 
     return 0;
@@ -534,13 +522,11 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
-    cprintf("page_remove( pgdir, va==%p\n", va);
     struct PageInfo* page_struct ;
     pte_t *pte ;
     if ( pgdir ) {
         page_struct = page_lookup(pgdir, va, &pte);
         if ( page_struct ) {
-            cprintf("page_remove: page structure found : removing !\n");
             page_decref(page_struct);
             *pte = 0;
             tlb_invalidate(pgdir, va);
