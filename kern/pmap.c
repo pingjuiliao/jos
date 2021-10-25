@@ -102,14 +102,11 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-    if ( n >= 0 ) {
-        result = nextfree ;
-        if ( n > 0 ) {
-            nextfree = ROUNDUP((char *) (nextfree + n), PGSIZE) ;
-        } /* else nextfree = nextfree ;*/
-        return result ;
-    }
-	return NULL;
+    result = nextfree ;
+    if ( n > 0 ) {
+        nextfree = ROUNDUP((char *) (nextfree + n), PGSIZE) ;
+    } /* else nextfree = nextfree ;*/
+    return result ;
 }
 
 // Set up a two-level page table:
@@ -203,6 +200,7 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
     boot_map_region(kern_pgdir, KERNBASE, 0x10000000, 0x0, PTE_W | PTE_P );
+    assert((size_t) -KERNBASE == 0x10000000 );
 
     // Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -374,7 +372,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
         pp = page_alloc(ALLOC_ZERO) ;
         if (!pp) return NULL ;
         pp->pp_ref += 1 ;
-        pgdir[PDX(va)] = PTE_ADDR(page2pa(pp)) | PTE_P | PTE_W | PTE_U ;
+        pgdir[PDX(va)] = page2pa(pp) | PTE_P | PTE_W | PTE_U ;
     }
     pte = (pte_t*) KADDR(PTE_ADDR( pgdir[PDX(va)])) ;
     return &pte[PTX(va)];
@@ -466,15 +464,11 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
     pte_t *pte = pgdir_walk(pgdir, va, 0);
-    if ( pte ) {
-        if ( pte_store ) {
-            *pte_store = pte ;
-        }
-        if ( *pte ) {
-            return pa2page(*pte);
-        }
-    }
-    return NULL;
+    if ( !pte || !(*pte & PTE_P) ) 
+        return NULL ;
+    if ( pte_store )
+        *pte_store = pte ;
+    return pa2page(*pte) ;
 }
 
 //
@@ -500,11 +494,10 @@ page_remove(pde_t *pgdir, void *va)
     pte_t *pte ;
 
     pp = page_lookup(pgdir, va, &pte);
-    if ( pp ) {
-        page_decref(pp);
-        *pte = 0;
-        tlb_invalidate(pgdir, va);
-    }
+    if ( !pp )  return ;
+    page_decref(pp);
+    *pte = 0;
+    tlb_invalidate(pgdir, va);
 }
 
 //
