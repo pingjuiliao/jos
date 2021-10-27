@@ -98,7 +98,7 @@ boot_alloc(uint32_t n)
 	// to any kernel code or global variables.
 	if (!nextfree) {
 		extern char end[];
-		nextfree = ROUNDUP((char *) end, PGSIZE);
+		nextfree = ROUNDUP((char *) end + 1, PGSIZE);
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -161,6 +161,13 @@ mem_init(void)
 	// Your code goes here:
     pages = (struct PageInfo *) boot_alloc(sizeof(struct PageInfo) * npages) ;
     memset(pages, 0, sizeof(struct PageInfo) * npages );
+	
+    //////////////////////////////////////////////////////////////////////
+	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
+	// LAB 3: Your code here.
+    //////////////////////////////////////////////////////////////////////
+    envs = (struct Env *) boot_alloc(sizeof(struct Env) * NENV );
+    memset(envs, 0, sizeof(struct Env) * NENV);
 
     //////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -184,6 +191,7 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
     boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P );
+    
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
