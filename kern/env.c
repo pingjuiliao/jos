@@ -119,12 +119,8 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
-    // cprintf("env_init, NENV == %5lu\n", NENV);
-    // cprintf("env_init: envs == %p\n", envs);
     int i ; // NENV == 512 (1 << 10)
     for ( i = NENV-1 ; i >= 0 ; --i ) {
-        // cprintf("env_init: i == %5lu\n", i);
-        // cprintf("env_init: &envs[i] == %p\n", &envs[i]);
         envs[i].env_id = 0;
         envs[i].env_status = ENV_FREE;
         envs[i].env_link = env_free_list ;
@@ -403,7 +399,6 @@ load_icode(struct Env *e, uint8_t *binary)
 
         }
     }
-    lcr3(PADDR(kern_pgdir));
     // pingjui: load the env_tf
     e->env_tf.tf_eip = (uintptr_t) ((struct Elf *) binary)->e_entry;
 #ifdef DEBUG
@@ -426,6 +421,8 @@ load_icode(struct Env *e, uint8_t *binary)
 #ifdef DEBUG
     cprintf("load_icode: ends\n");
 #endif
+    
+    lcr3(PADDR(kern_pgdir));
 }
 
 //
